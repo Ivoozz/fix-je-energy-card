@@ -118,6 +118,7 @@ class KFlowCardEditor extends HTMLElement {
     this._fireChanged();
     if (key === '_show_battery' || key === '_show_battery2' || key === '_show_pv_extra' ||
         key === '_show_ev'      || key === 'battery_cap_unit' || key === '_labels_custom_entities' ||
+        key === '_show_custom_stats' ||
         key === 'label_cell_temp_minmax' || key === 'label_bms_temp'         ||
         key === 'label_min_cell'         || key === 'label_max_cell'         ||
         key === 'label_batt_dis'         || key === 'label_total_pv_gen'     ||
@@ -135,6 +136,7 @@ class KFlowCardEditor extends HTMLElement {
     const showBatt2 = !!(cfg._show_battery2);
     const showPVExtra = !!(cfg._show_pv_extra);
     const showEV = !!(cfg._show_ev);
+    const showCustomStats = !!(cfg._show_custom_stats);
     const capUnit = cfg.battery_cap_unit || 'ah'; // 'ah' or 'kwh'
 
     const style = `
@@ -672,6 +674,10 @@ class KFlowCardEditor extends HTMLElement {
       numberField('charger_battery_capacity_wh', 'EV Battery Capacity', 0, 200000, 1, 'Wh'),
     ], { toggleKey: '_show_ev', toggleOn: showEV, hidden: !showEV }));
 
+    shell.appendChild(makeSection('custom_stats', '📊', 'Custom & Financial Stats', [
+      picker('current_price_entity', 'Current Price Sensor'),
+    ], { toggleKey: '_show_custom_stats', toggleOn: showCustomStats, hidden: !showCustomStats }));
+
     this.innerHTML = '';
     this.appendChild(shell);
     this._rendered = true; // Fix #2: mark rendered so hass setter stops triggering full DOM rebuilds
@@ -761,6 +767,8 @@ class KFlowCard extends HTMLElement {
       invert_grid_power: false,
       _show_pv_extra: false,   // combined toggle
       _show_ev: false,
+      _show_custom_stats: false,
+      current_price_entity: '',
     };
   }
 
@@ -1099,6 +1107,18 @@ class KFlowCard extends HTMLElement {
         <div style="flex:1;display:flex;align-items:center;gap:4px"><span style="font-size:.42rem;color:#8b949e;letter-spacing:1px;text-transform:uppercase">Pwr</span><div style="flex:1;background:#21262d;border-radius:20px;height:9px;overflow:hidden;position:relative"><div id="pwrBar" style="position:absolute;inset:0;right:auto;width:0%;border-radius:20px;background:#3fb950;transition:width .4s,background .4s"></div></div></div>
       </div>
       <div class="dv"></div>
+      ${this.config._show_custom_stats ? `
+      <div class="ct">📊 Financieel & Status</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <div class="st"><div class="l">Batterij Vermogen</div><div class="v" id="statBattPwr" style="color:#f39c4b;font-size:.84rem;font-weight:700">-- W</div></div>
+        <div class="st"><div class="l">Zon Live</div><div class="v" id="statSolarPwr" style="color:#ffe83c;font-size:.84rem;font-weight:700">-- W</div></div>
+        <div class="st"><div class="l">Netto Import</div><div class="v" id="statNetImport" style="color:#ff2929;font-size:.84rem;font-weight:700">-- W</div></div>
+        <div class="st"><div class="l">Huidige Prijs</div><div class="v" id="statCurrentPrice" style="color:#ff55b8;font-size:.84rem;font-weight:700">--</div></div>
+        <div class="st"><div class="l">Opslag Waarde</div><div class="v" id="statStorageValue" style="color:#3fb950;font-size:.84rem;font-weight:700">--</div></div>
+        <div class="st"><div class="l">Resterende Accu</div><div class="v" id="statRemCap" style="color:#00d4ff;font-size:.84rem;font-weight:700">-- kWh</div></div>
+      </div>
+      <div class="dv"></div>
+      ` : ''}
       <div class="ct">☀️ Inverter</div>
       <div class="pvf">
         <div class="pvi"><div class="ico">☀️</div><div class="lbl">Today PV</div><div class="val yw" id="invTodayPv">-- kWh</div></div>
@@ -1647,6 +1667,40 @@ class KFlowCard extends HTMLElement {
         setText('evEtaVal', '--');
       }
       } // end else (_show_ev)
+    }
+
+    if (this.config._show_custom_stats) {
+      const statBattPwr = getEl('statBattPwr');
+      if (statBattPwr) {
+        statBattPwr.textContent = absPwr1.toFixed(0) + ' W';
+        statBattPwr.style.color = absPwr1 < 50 ? '#8b949e' : '#f39c4b';
+      }
+      const statSolarPwr = getEl('statSolarPwr');
+      if (statSolarPwr) {
+        statSolarPwr.textContent = pvTotal.toFixed(0) + ' W';
+        statSolarPwr.style.color = pvTotal < 10 ? '#8b949e' : '#ffe83c';
+      }
+      const statNetImport = getEl('statNetImport');
+      if (statNetImport) {
+        statNetImport.textContent = gridActive.toFixed(0) + ' W';
+        statNetImport.style.color = gridActive > 10 ? '#ff2929' : gridActive < -10 ? '#2ecc71' : '#8b949e';
+      }
+      
+      const priceVal = this._val(this.config.current_price_entity);
+      const statCurrentPrice = getEl('statCurrentPrice');
+      if (statCurrentPrice) {
+        statCurrentPrice.textContent = priceVal !== null ? '€' + priceVal.toFixed(3) : '--';
+      }
+      
+      const remKwhVal = totalRemKwh !== null ? totalRemKwh : (totalRemAh !== null && battVolt1 > 0 ? (totalRemAh * battVolt1) / 1000 : 0);
+      const statStorageValue = getEl('statStorageValue');
+      if (statStorageValue) {
+        statStorageValue.textContent = (priceVal !== null && remKwhVal > 0) ? '€' + (remKwhVal * priceVal).toFixed(3) : '€0.000';
+      }
+      const statRemCap = getEl('statRemCap');
+      if (statRemCap) {
+        statRemCap.textContent = remKwhVal > 0 ? remKwhVal.toFixed(1) + ' kWh' : '-- kWh';
+      }
     }
   }
 }
