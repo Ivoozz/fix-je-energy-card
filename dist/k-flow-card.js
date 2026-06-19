@@ -940,7 +940,9 @@ class KFlowCard extends HTMLElement {
 
     // Battery current/power placed OUTSIDE the transformed group, above/below the flow bar (center y=175)
     const battTextSingle = `
-      <text id="battPwrFlow" x="75" y="165" font-size="10" font-weight="600" fill="#cde">-- W</text>
+      <text id="battPwrFlow" x="75" y="156" font-size="10" font-weight="600" fill="#cde">-- W</text>
+      <rect x="58" y="167" width="34" height="15" rx="3" fill="#161b22" opacity="0.95"/>
+      <text id="fcBattVal" x="75" y="179" text-anchor="middle" font-size="11" font-weight="800" fill="#fff">--%</text>
       <text id="battCurrFlow" x="75" y="196" font-size="10" font-weight="600" fill="#fff">-- A</text>
     `;
     const battTextDual = `
@@ -983,7 +985,6 @@ class KFlowCard extends HTMLElement {
             <rect id="battFillBar" x="53" y="263" width="62" height="0" rx="0" fill="#3fb950" clip-path="url(#battBodyClip)"/>
             <rect id="battFillHL" x="53" y="263" width="62" height="0" rx="0" fill="url(#battFillHighlight)" clip-path="url(#battBodyClip)" style="pointer-events:none"/>
             <g id="battBoltGroup" opacity="0"><polygon points="86,176 74,199 82,199 77,223 93,195 85,195 97,176" fill="#1a4aff" stroke="rgba(100,150,255,.5)" stroke-width="0.8" filter="url(#battGlowBolt)"><animate attributeName="opacity" values="0.5;1;0.5" dur="1.0s" repeatCount="indefinite"/></polygon></g>
-            <text id="fcBattVal" x="84" y="211" text-anchor="middle" font-size="18" font-weight="900" fill="#fff">--%</text>
             <text id="battVoltageFlow" x="84" y="285" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">-- V</text>
           `) +
       `</g>
@@ -1096,26 +1097,6 @@ class KFlowCard extends HTMLElement {
       `<div style="display:flex;gap:8px;align-items:center;margin-top:10px">
         <div style="flex:1;display:flex;align-items:center;gap:4px"><span style="font-size:.42rem;color:#8b949e;letter-spacing:1px;text-transform:uppercase">PV</span><div style="flex:1;display:flex;gap:2px;align-items:flex-end;height:10px" id="pvBlocks"></div></div>
         <div style="flex:1;display:flex;align-items:center;gap:4px"><span style="font-size:.42rem;color:#8b949e;letter-spacing:1px;text-transform:uppercase">Pwr</span><div style="flex:1;background:#21262d;border-radius:20px;height:9px;overflow:hidden;position:relative"><div id="pwrBar" style="position:absolute;inset:0;right:auto;width:0%;border-radius:20px;background:#3fb950;transition:width .4s,background .4s"></div></div></div>
-      </div>
-      <div class="dv"></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-top:5px">
-        <div class="st"><div class="l">${this.config.label_cell_temp_minmax || 'CELL TEMP MIN/MAX'}</div><div class="v" id="bTemp1">-- °C</div></div>
-        <div class="st"><div class="l">${this.config.label_bms_temp || 'BMS TEMP'}</div><div class="v" id="bTemp2">-- °C</div></div>
-        <div class="st"><div class="l">${this.config.label_total_pv_gen || 'TOTAL PV GEN.'}</div><div class="v" id="bTotalPvGen">-- kWh</div></div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-top:4px">
-        <div class="st"><div class="l">${this.config.label_min_cell || 'Min Cell'}</div><div class="v" id="bMinCell">-- V</div></div>
-        <div class="st"><div class="l">${this.config.label_max_cell || 'Max Cell'}</div><div class="v" id="bMaxCell">-- V</div></div>
-        <div class="st"><div class="l">${this.config.label_batt_dis || 'Batt Dis.'}</div><div class="v" id="bBattDis">-- kWh</div></div>
-      </div>
-      <div style="margin-top:4px">
-        <div class="st" style="display:flex;flex-direction:row;align-items:flex-end;justify-content:space-between;gap:8px;padding:4px 9px 5px;width:100%;box-sizing:border-box">
-          <div class="l" id="bEnduStatLbl" style="margin-bottom:0;white-space:nowrap;line-height:1.4">${this.config.label_endurance || 'ENDURANCE'}</div>
-          <div style="display:flex;align-items:flex-end;gap:10px;flex-shrink:0">
-            <div class="v" id="bEnduranceStat" style="font-size:.88rem;line-height:1.2">--</div>
-            <div id="bEnduranceTime" style="font-size:.58rem;color:#8b949e;letter-spacing:.3px;white-space:nowrap;line-height:1.4">Till --</div>
-          </div>
-        </div>
       </div>
       <div class="dv"></div>
       <div class="ct">☀️ Inverter</div>
@@ -1306,7 +1287,7 @@ class KFlowCard extends HTMLElement {
       const fill = this._battFill(battSoc1);
       const bf = getEl('battFillBar'); if (bf) { bf.setAttribute('y', fill.y); bf.setAttribute('height', fill.height); bf.setAttribute('fill', fill.color); bf.setAttribute('filter', fill.filter); }
       const bh = getEl('battFillHL'); if (bh) { bh.setAttribute('y', fill.y); bh.setAttribute('height', fill.height); }
-      setText('fcBattVal', battSoc1 + '%'); setAttr('fcBattVal', 'fill', fill.textColor);
+      setText('fcBattVal', battSoc1 + '%'); setAttr('fcBattVal', 'fill', fill.color);
       setText('battVoltageFlow', battVolt1.toFixed(1) + ' V');
       setText('battPwrFlow', absPwr1.toFixed(0) + ' W');
       setText('battCurrFlow', battCurr1.toFixed(1) + ' A');
@@ -1615,7 +1596,7 @@ class KFlowCard extends HTMLElement {
     // Fix #11: guard pvBlocks rebuild (was regenerating 20 divs on every state update)
     if (pvBlocks && pvTotal !== this._prevPvBlocksTotal) {
       this._prevPvBlocksTotal = pvTotal;
-      const lit = Math.round((pvTotal / pvMax) * 20); const heights = [20, 35, 50, 60, 70, 80, 90, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100]; let html = ''; for (let i = 0; i < 20; i++) html += `<div style="flex:1;background:${i < lit ? 'rgba(255,255,255,0.55)' : '#21262d'};height:${i < lit ? heights[i] : 100}%;opacity:${i < lit ? 1 : 0.35};border-radius:2px;"></div>`; pvBlocks.innerHTML = html;
+      const lit = Math.round((pvTotal / pvMax) * 20); const heights = [20, 35, 50, 60, 70, 80, 90, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100]; let html = ''; for (let i = 0; i < 20; i++) html += `<div style="flex:1;background:${i < lit ? 'rgba(255,255,255,0.55)' : '#21262d'};height:${heights[i]}%;opacity:${i < lit ? 1 : 0.35};border-radius:2px;"></div>`; pvBlocks.innerHTML = html;
     }
 
     // EV
